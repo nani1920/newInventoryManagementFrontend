@@ -1,0 +1,126 @@
+/** @format */
+
+import * as React from "react";
+import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
+import { Box, Typography, Paper, TextField } from "@mui/material";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import EditIcon from "@mui/icons-material/Edit";
+
+const paginationModel = { page: 0, pageSize: 10 };
+
+export default function LowStockAlertsList() {
+  const [filter, setFilter] = React.useState("");
+  const [filteredRows, setFilteredRows] = React.useState([]);
+  const [rows, setRows] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const columns = [
+    { field: "productId", headerName: "Product ID", width: 150 },
+    {
+      field: "stockQuantity",
+      headerName: "Stock Quantity",
+      width: 150,
+      align: "right",
+    },
+    {
+      field: "reorderLevel",
+      headerName: "Reorder Level",
+      width: 150,
+      align: "right",
+    },
+    { field: "status", headerName: "Status", width: 150 },
+    { field: "remarks", headerName: "Remarks", width: 300 },
+    {
+      field: "actions",
+      type: "actions",
+      headerName: "Actions",
+      width: 100,
+      getActions: ({ id }) => {
+        return [
+          <GridActionsCellItem
+            icon={<EditIcon />}
+            label="Edit"
+            onClick={() => handleEditClick(id)}
+          />,
+        ];
+      },
+    },
+  ];
+  React.useEffect(() => {
+    const fetchLowStockAlerts = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(
+          "https://inventorymanagement-production-e917.up.railway.app/low-stock-alerts"
+        );
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        // Map the API response to the format expected by DataGrid
+        const formattedRows = data.map((item) => ({
+          ...item,
+          id: item._id, // Use _id as id
+        }));
+        setRows(formattedRows);
+        setFilteredRows(formattedRows);
+      } catch (error) {
+        console.error("Error fetching low stock alerts:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLowStockAlerts();
+  }, []);
+
+  const handleFilterChange = (event) => {
+    const value = event.target.value;
+    setFilter(value);
+    setFilteredRows(
+      rows.filter(
+        (row) =>
+          row.productId.toLowerCase().includes(value.toLowerCase()) ||
+          row.status.toLowerCase().includes(value.toLowerCase())
+      )
+    );
+  };
+
+  const handleEditClick = (id) => {
+    console.log(`Edit clicked for row with ID: ${id}`);
+    // Add your edit logic here
+  };
+
+  if (loading) {
+    return <Typography>Loading low stock alerts...</Typography>;
+  }
+
+  return (
+    <Box>
+      <Typography variant="h4" align="left" p={2} fontFamily="Roboto">
+        Low Stock Alerts List
+      </Typography>
+      <Box sx={{ width: 1000, height: "85vh" }}>
+        <Paper sx={{ height: "100%", width: "100%" }}>
+          <Box sx={{ display: "flex", alignItems: "center", padding: "10px" }}>
+            <TextField
+              size="small"
+              value={filter}
+              onChange={handleFilterChange}
+              placeholder={`Search Product ID or Status`}
+              sx={{ mr: 2, width: 300 }}
+            />
+            <FilterListIcon />
+          </Box>
+          <DataGrid
+            rows={filteredRows}
+            columns={columns}
+            initialState={{ pagination: { paginationModel } }}
+            pageSizeOptions={[10, 25, 50]}
+            sx={{ border: 0 }}
+          />
+        </Paper>
+      </Box>
+    </Box>
+  );
+}
